@@ -1,0 +1,356 @@
+<html ng-app="RepodiumWebApp">
+<head>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.24/angular.min.js"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+  <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+
+  <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="xeditable/xeditable.css" rel="stylesheet">
+  <script src="xeditable/xeditable.js"></script>
+</head>
+<body ng-controller="MainCtrl">
+
+  <div class="container" >
+
+  <h2>Repodium <small>Managing your DEV server repos</small></h2>
+  <div class="bs-callout bs-callout-info">
+    Server host: {{ serverInfo.hostname }}<br>
+    Server dir: {{ serverInfo.repoBaseDir }}<br>
+  </div>
+
+  <table class="table table-striped table-hover">
+    <thead>
+      <th>Repository</th><th>Active Branch</th><th>Last Commit</th>
+      <th>Actions</th>
+    </thead>
+    <tbody>
+
+        <tr ng-repeat="(repoName, repoInfo) in repos">
+          <td><a href="/repodium/browse/{{repoName}}">{{repoName}}</a> 
+            <a ng-if="repoInfo.home" href="{{repoInfo.home}}"><span class="glyphicon glyphicon-home"></span></a>
+          </td>
+          <td><a href="#" editable-select="repoInfo.currentBranch" onshow="loadBranches(repoName)" onbeforesave="repoCheckout(repoName, $data)" e-ng-options="br.name as br.name for br in branches[repoName]">
+      {{ repoInfo.currentBranch || 'not set' }}
+    </a></td>
+          <td>[{{repoInfo.lastCommit.date}}] <a data-toggle="tooltip" title="{{repoInfo.lastCommit.subject}}">{{repoInfo.lastCommit.hash}}</a> ({{getInitials(repoInfo.lastCommit.author)}}) 
+            <button ng-click="repoLog(repoName)" type="button" class="btn btn-default btn-xs">Logs
+            </button> 
+          </td>
+          <td>
+            <button ng-click="repoPull(repoName)" type="button" class="btn btn-default btn-xs">
+              <span class="glyphicon glyphicon-save"></span> Pull
+            </button> 
+
+            <button ng-if="repoInfo.hasSubmodules" ng-click="repoSubmoduleUpdate(repoName)" type="button" class="btn btn-default btn-xs">
+              SubModule
+            </button>
+
+            <button ng-click="repoPush(repoName)" type="button" class="btn btn-default btn-xs">
+              <span class="glyphicon glyphicon-open"></span> Push
+            </button> 
+
+            <button ng-click="repoRemove(repoName)" type="button" class="btn btn-warning btn-xs">
+              <span class="glyphicon glyphicon-remove"></span> Delete
+            </button>
+            
+            <span ng-if="repoInfo.build.length > 0" > | 
+              <button ng-click="projectBuild(repoName)" title="Builds the project with given target" class="btn btn-default btn-xs"><span class="glyphicon glyphicon-cog"></span> {{repoInfo.build[0]}}</button>
+              <input id="buildTarget" class="input-sm" style="width:55px" placeholder="target"></input>
+            </span>
+
+          </td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>        
+        </tr>
+      </tfoot>
+    </table>
+
+
+    <form class="form-horizontal" role="form" id="CloneForm">
+      Clone 
+      <div class="form-group ">
+        <div class="col-sm-7">
+          <label class="sr-only" for="remoteUrl">URL</label>
+          <input type="text" class="form-control" id="cloneRemoteUrl" placeholder="URL">
+        </div>
+
+        <div class="col-sm-3">
+          <label class="sr-only" for="repoName">Local name</label>
+          <input type="text" class="form-control " id="cloneRepoName" placeholder="Local Repo Name">
+        </div>
+        <div class="col-sm-2">
+          <button ng-click="repoClone();" class="btn btn-info">Clone</button>
+        </div>
+      </div>
+    </form>
+
+    <hr />
+    Repodium ver. {{ serverInfo.REPODIUM_VER }}
+    <a href="https://github.com/altenia/repodium"/><i class="fa fa-github fa-2"></i></a>
+  </div>
+
+  <!-- MODAL Dialob -->
+  <!-- Modal -->
+  <div class="modal fade" id="result_modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+          <h4 class="modal-title" id="result_title">Result</h4>
+        </div>
+        <div class="modal-body">
+          <div id="result_body" />
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+var repodiumApp = angular.module('RepodiumWebApp', ['xeditable']);
+repodiumApp.run(function(editableOptions) {
+  // Bootstrap3 theme
+  editableOptions.theme = 'bs3';
+});
+</script>
+
+<script src="js/repodiumservice.js"></script>
+<script>
+repodiumApp.controller('MainCtrl', function ($scope, $http, RepodiumService) {
+  $scope.repos = {};
+  $scope.branches = {};
+  $scope.serverInfo = "Repodium";
+
+  // Retrieve server info
+  RepodiumService.getServerInfo()
+    .success(function(data, status, headers, config) {
+      $scope.serverInfo = data;
+    })
+    .error(function(data, status, headers, config) {
+      console.log(data);
+    });
+
+  // Retrieve server repo info
+  RepodiumService.getRepos($scope.repos)
+    .success(function(data, status, headers, config) {
+      $scope.repos = data.repositories;
+    })
+    .error(function(data, status, headers, config) {
+      console.log(data);
+    });
+
+  /**
+   * Load Branches. Called by the x-editor
+   * @param  {string} repoName The repository
+   */
+  $scope.loadBranches = function(repoName) {
+    //$scope.branches[repoName] = ['a', 'b'];
+    RepodiumService.getBranches(repoName)
+      .success(function(data, status, headers, config) {
+        $scope.branches[repoName] = data.result.branches;
+      })
+      .error(function(data, status, headers, config) {
+        console.log(data);
+      });
+  };
+
+  /**
+   * Checkout a branch. Called by the x-editor, when branch is changed
+   * @param  {string} repoName The repository
+   * @param  {string} branch   The branch
+   */
+  $scope.repoCheckout = function(repoName, branch) {
+    RepodiumService.checkout(repoName, branch)
+      .success(function(data, status, headers, config) {
+        // SUccess
+      })
+      .error(function(data, status, headers, config) {
+        alert('Error checkout ' + branch + '\n' + JSON.stringify(data));
+        console.log(data);
+      });
+  };
+
+  /**
+   * Clone a remote repo. Called by the x-editor
+   * @param  {string} url      The url or the remote repo
+   * @param  {string} repoName The repository
+   */
+  $scope.repoClone = function(url, repoName) {
+    var url = url || $('#cloneRemoteUrl').val();
+    var repoName = repoName || $('#cloneRepoName').val();
+
+    var origCursor = setCursor('wait');
+
+    RepodiumService.clone(url, repoName)
+      .success(function(data, status, headers, config) {
+        $scope.repos[repoName] = data.repository;
+        //alert('Cloned:' + repoName + '\n' + JSON.stringify(data));
+      })
+      .error(function(data, status, headers, config) {
+        console.log(data);
+      })
+      .finally(function(){
+        document.body.style.cursor = origCursor;
+      });
+  };
+  
+  /**
+   * Checkout a branch. Called by the x-editor, when branch is changed
+   * @param  {string} repoName The repository
+   * @param  {string} branch   The branch
+   */
+  $scope.repoLog = function(repoName) {
+    RepodiumService.getLogs(repoName)
+      .success(function(data, status, headers, config) {
+        
+        openResultModal('[' + repoName + '] Log of' , JSON.stringify(data.result));
+      })
+      .error(function(data, status, headers, config) {
+        console.log(data);
+      });
+  };
+
+  /**
+   * Pull Repo. Called by the x-editor
+   * @param  {string} repoName The repository
+   */
+  $scope.repoRemove = function(repoName) {
+    
+    var origCursor = setCursor('wait');
+
+    if (confirm('Are you sure you want delete ' + repoName + ' repo?'))
+    {      
+      RepodiumService.remove(repoName)
+        .success(function(data, status, headers, config) {
+          delete $scope.repos[repoName];
+          delete $scope.branches[repoName];
+          document.body.style.cursor = origCursor;
+        })
+        .error(function(data, status, headers, config) {
+          console.log(data);
+        })
+        .finally(function(){
+          document.body.style.cursor = origCursor;
+        });
+    } 
+  };
+
+
+  /**
+   * Repo Submodue init
+   * @param  {string} repoName The repository
+   * @param  {string} branch   The branch
+   */
+  $scope.repoSubmoduleUpdate = function(repoName) {
+    var origCursor = setCursor('wait');
+    RepodiumService.submoduleUpdate(repoName)
+      .success(function(data, status, headers, config) {
+        openResultModal('[' + repoName + '] Submodule Update ',  JSON.stringify(data.result));
+      })
+      .error(function(data, status, headers, config) {
+        alert('Error checkout ' + branch + '\n' + JSON.stringify(data));
+        console.log(data);
+      })
+      .finally(function(){
+        document.body.style.cursor = origCursor;
+      });
+  };
+  
+  /**
+   * Pull Repo. Called by the x-editor
+   * @param  {string} repoName The repository
+   */
+  $scope.repoPull = function(repoName) {
+
+    var origCursor = setCursor('wait');
+
+    RepodiumService.pull(repoName)
+      .success(function(data, status, headers, config) {
+        RepodiumService.getRepoInfo(repoName)
+        .success(function(getInfoData, status, headers, config) {
+          $scope.repos[repoName] = getInfoData.repository;
+          openResultModal('[' + repoName + '] Pull', JSON.stringify(getInfoData));
+        });
+      })
+      .error(function(data, status, headers, config) {
+        alert('pulled:' + repoName + '\n' + JSON.stringify(data));
+        console.log(data);
+      })
+      .finally(function(){
+        document.body.style.cursor = origCursor;
+      });
+  };
+
+  /**
+   * Pull Repo. Called by the x-editor
+   * @param  {string} repoName The repository
+   */
+  $scope.repoPush = function(repoName) {
+    alert("NOT IMPLEMENTED");
+  }
+
+  /**
+   * Builds a project (using a build tool, e.g. make, grunt, mvn, etc.)
+   */
+  $scope.projectBuild = function(repoName, target) {
+    var tool = $scope.repos[repoName].build[0];
+    var target = target || $('#buildTarget').val();
+    var origCursor = setCursor('wait');
+
+    RepodiumService.buildProject(repoName, tool, target)
+      .success(function(data, status, headers, config) {
+          var result = (data.error) ? 'Error: ' + data.result.stderr 
+            : data.result.stdout;
+          openResultModal('[' + repoName + '] Build', JSON.stringify(result));
+      })
+      .error(function(data, status, headers, config) {
+        alert('Build failed:' + repoName + '\n' + JSON.stringify(data));
+        console.log(data);
+      })
+      .finally(function(){
+        document.body.style.cursor = origCursor;
+      });
+  };
+  
+  /**
+   * Retruns the initials of a text
+   */
+  $scope.getInitials = function(text) {
+    var arr = text.split( ' ' );
+
+    var result = '';
+    for( x=0; x<arr.length; x++) 
+        result += arr[x].charAt(0);
+    return result;
+  }
+
+  /**
+   * Opens the Result modal dialog box
+   */
+  function openResultModal(title, body)
+  {
+    $('#result_title').text(title);
+    $('#result_body').text(body);
+    $('#result_modal').modal('show');
+  }
+
+  /**
+   * Sets the document's cursor
+   */
+  function setCursor(newCursor)
+  {
+    var origCursor = document.body.style.cursor;
+    document.body.style.cursor = newCursor;
+    return origCursor;
+  }
+
+});
+</script>
+
+</body>
+</html>
