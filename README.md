@@ -20,6 +20,14 @@ To install use the npm:
 
 	npm install altenia/gitrium
 
+Alternatively you can clone it:
+	
+	git clone https://github.com/altenia/repodium.git
+
+And then install dependencies
+
+	npm install
+
 Start
 =====
 
