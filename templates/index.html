@@ -56,7 +56,7 @@
             
             <span ng-if="repoInfo.build.length > 0" > | 
               <button ng-click="projectBuild(repoName)" title="Builds the project with given target" class="btn btn-default btn-xs"><span class="glyphicon glyphicon-cog"></span> {{repoInfo.build[0]}}</button>
-              <input id="buildTarget" class="input-sm" style="width:55px" placeholder="target"></input>
+              <input id="{{repoName}}_buildTarget" class="input-sm" style="width:55px" placeholder="target"></input>
             </span>
 
           </td>
@@ -299,7 +299,7 @@ repodiumApp.controller('MainCtrl', function ($scope, $http, RepodiumService) {
    */
   $scope.projectBuild = function(repoName, target) {
     var tool = $scope.repos[repoName].build[0];
-    var target = target || $('#buildTarget').val();
+    var target = target || $('#' + repoName +'_buildTarget').val();
     var origCursor = setCursor('wait');
 
     RepodiumService.buildProject(repoName, tool, target)
