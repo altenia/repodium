@@ -7,11 +7,11 @@
  * # Journalservice
  * Service in the webappApp.
  */
-angular.module('GitriumWebApp')
+angular.module('RepodiumWebApp')
     // User $resource instead
-  .service('GitriumService', ['$http', function GitriumService($http) {
+  .service('RepodiumService', ['$http', function RepodiumService($http) {
 
-    this.serviceBaseUrl = '/gitrium';
+    this.serviceBaseUrl = '/repodium';
 
     this.getServerInfo = function() {
         return $http.get(this.serviceBaseUrl);

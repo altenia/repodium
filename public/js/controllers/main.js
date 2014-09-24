@@ -3,20 +3,20 @@
 /**
  * PENDING (still using from the index.html)
  * @ngdoc function
- * @name GitriumWebApp.controller:MainCtrl
+ * @name RepodiumWebApp.controller:MainCtrl
  * @description
  * # MainCtrl
- * Controller of the GitriumWebApp
+ * Controller of the RepodiumWebApp
  */
-//var gitriumApp = angular.module('GitriumWebApp');
+//var repodiumApp = angular.module('RepodiumWebApp');
 
-gitriumApp.controller('MainCtrl', function ($scope, $http, GitriumService) {
+repodiumApp.controller('MainCtrl', function ($scope, $http, RepodiumService) {
   $scope.repos = {};
   $scope.branches = {};
-  $scope.serverInfo = "Gitrium";
+  $scope.serverInfo = "Repodium";
 
   // Retrieve server info
-  GitriumService.getServerInfo()
+  RepodiumService.getServerInfo()
     .success(function(data, status, headers, config) {
       $scope.serverInfo = data;
     })
@@ -25,7 +25,7 @@ gitriumApp.controller('MainCtrl', function ($scope, $http, GitriumService) {
     });
 
   // Retrieve server repo info
-  GitriumService.getRepos($scope.repos)
+  RepodiumService.getRepos($scope.repos)
     .success(function(data, status, headers, config) {
       $scope.repos = data.repositories;
     })
@@ -39,7 +39,7 @@ gitriumApp.controller('MainCtrl', function ($scope, $http, GitriumService) {
    */
   $scope.loadBranches = function(repoName) {
     //$scope.branches[repoName] = ['a', 'b'];
-    GitriumService.getBranches(repoName)
+    RepodiumService.getBranches(repoName)
       .success(function(data, status, headers, config) {
         $scope.branches[repoName] = data.result.branches;
       })
@@ -54,7 +54,7 @@ gitriumApp.controller('MainCtrl', function ($scope, $http, GitriumService) {
    * @param  {string} branch   The branch
    */
   $scope.repoCheckout = function(repoName, branch) {
-    GitriumService.checkout(repoName, branch)
+    RepodiumService.checkout(repoName, branch)
       .success(function(data, status, headers, config) {
         // SUccess
       })
@@ -75,7 +75,7 @@ gitriumApp.controller('MainCtrl', function ($scope, $http, GitriumService) {
 
     var origCursor = setCursor('wait');
 
-    GitriumService.clone(url, repoName)
+    RepodiumService.clone(url, repoName)
       .success(function(data, status, headers, config) {
         $scope.repos[repoName] = data.repository;
         //alert('Cloned:' + repoName + '\n' + JSON.stringify(data));
@@ -94,7 +94,7 @@ gitriumApp.controller('MainCtrl', function ($scope, $http, GitriumService) {
    * @param  {string} branch   The branch
    */
   $scope.repoLog = function(repoName) {
-    GitriumService.getLogs(repoName)
+    RepodiumService.getLogs(repoName)
       .success(function(data, status, headers, config) {
         //alert('Logs ' + JSON.stringify(data.result));
         openResultModal("Log of " + repoName, JSON.stringify(data.result));
@@ -114,7 +114,7 @@ gitriumApp.controller('MainCtrl', function ($scope, $http, GitriumService) {
 
     if (confirm('Are you sure you want delete ' + repoName + ' repo?'))
     {      
-      GitriumService.remove(repoName)
+      RepodiumService.remove(repoName)
         .success(function(data, status, headers, config) {
           delete $scope.repos[repoName];
           delete $scope.branches[repoName];
@@ -138,9 +138,9 @@ gitriumApp.controller('MainCtrl', function ($scope, $http, GitriumService) {
 
     var origCursor = setCursor('wait');
 
-    GitriumService.pull(repoName)
+    RepodiumService.pull(repoName)
       .success(function(data, status, headers, config) {
-        GitriumService.getRepoInfo(repoName)
+        RepodiumService.getRepoInfo(repoName)
         .success(function(getInfoData, status, headers, config) {
           $scope.repos[repoName] = getInfoData.repository;
         });
@@ -167,7 +167,7 @@ gitriumApp.controller('MainCtrl', function ($scope, $http, GitriumService) {
     var target = target || $('#buildTarget').val();
     var origCursor = setCursor('wait');
 
-    GitriumService.buildProject(repoName, tool, target)
+    RepodiumService.buildProject(repoName, tool, target)
       .success(function(data, status, headers, config) {
         var result = (data.error) ? 'Error: ' + data.result.stderr 
           : data.result.stdout;
