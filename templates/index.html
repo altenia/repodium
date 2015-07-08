@@ -54,7 +54,7 @@
               <span class="glyphicon glyphicon-remove"></span> Delete
             </button>
             
-            <span ng-if="repoInfo.build.length > 0" > | 
+            <span ng-if="repoInfo.build.length > 0" style="white-space: nowrap;"> | 
               <button ng-click="projectBuild(repoName)" title="Builds the project with given target" class="btn btn-default btn-xs"><span class="glyphicon glyphicon-cog"></span> {{repoInfo.build[0]}}</button>
               <input id="{{repoName}}_buildTarget" class="input-sm" style="width:55px" placeholder="target"></input>
             </span>

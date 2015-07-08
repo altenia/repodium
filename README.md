@@ -47,3 +47,5 @@ Usage
 =====
 It should be intuitive enough. Basically you will clone a project from remote git server.
 Once cloned, you can change branches, browse logs, pull, and build (currently only make is supported).
+
+http://<server>:<port>/repodium/public/index.html
